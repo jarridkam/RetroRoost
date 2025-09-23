@@ -54,4 +54,5 @@ compile_commands.json
 *_qmlcache.qrc
 RetroRoostQT/cmake-build-debug
 RetroRoostQT/cmake-build-debug
-RetroRoostQT/C++/User/.idea
+RetroRoostQT/src/User/.idea
+.idea
