@@ -1,5 +1,0 @@
-/Users/jarridkamphenkel/CLionProjects/RetroRoostQT/cmake-build-debug/CMakeFiles/RetroRoostQT.dir
-/Users/jarridkamphenkel/CLionProjects/RetroRoostQT/cmake-build-debug/CMakeFiles/edit_cache.dir
-/Users/jarridkamphenkel/CLionProjects/RetroRoostQT/cmake-build-debug/CMakeFiles/rebuild_cache.dir
-/Users/jarridkamphenkel/CLionProjects/RetroRoostQT/cmake-build-debug/CMakeFiles/RetroRoostQT_autogen_timestamp_deps.dir
-/Users/jarridkamphenkel/CLionProjects/RetroRoostQT/cmake-build-debug/CMakeFiles/RetroRoostQT_autogen.dir
