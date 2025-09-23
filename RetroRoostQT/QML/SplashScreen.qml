@@ -6,11 +6,11 @@ Page {
 
     Rectangle {
         anchors.fill: parent
-        color: "black"
+        color: "red"
 
         Text {
             anchors.centerIn: parent
-            text: "Loading RetroRoost..."
+            text: "RetroRoost"
             color: "white"
             font.pixelSize: 24
         }
