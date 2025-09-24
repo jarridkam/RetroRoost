@@ -12,7 +12,8 @@ Page {
             anchors.centerIn: parent
             text: "RetroRoost"
             color: "white"
-            font.pixelSize: 24
+            font.pixelSize: 48
+            font.bold: true
         }
     }
 

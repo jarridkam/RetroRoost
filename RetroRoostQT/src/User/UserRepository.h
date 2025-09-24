@@ -1,19 +1,25 @@
-//
-// Created by Jarrid on 9/22/2025.
-//
+#ifndef USERREPOSITORY_H
+#define USERREPOSITORY_H
 
-#ifndef RETROROOSTQT_USERREPOSITORY_H
-#define RETROROOSTQT_USERREPOSITORY_H
-
+#include <QObject>
 #include <QList>
 #include "User.h"
 
-// UserRepository.h
-class UserRepository {
+class UserRepository : public QObject {
+    Q_OBJECT
 public:
-    static bool createUser(const QString& name, const QString& email, const QString& password);
-    static QList<User> getAllUsers();
+    explicit UserRepository(QObject *parent = nullptr);
+
+
+    Q_INVOKABLE static bool createUser(const QString &name,
+                                const QString &email,
+                                const QString &password);
+
+
+    static bool createUser(const User &user);
+
+
+    QList<User> getAllUsers();
 };
 
-
-#endif //RETROROOSTQT_USERREPOSITORY_H
+#endif // USERREPOSITORY_H

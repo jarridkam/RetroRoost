@@ -1,18 +1,20 @@
 #include "DatabaseManager.h"
+#include <QCoreApplication>
+#include <QDebug>
+#include <QDir>
 #include <QSqlError>
 #include <QSqlQuery>
-#include <QDebug>
 #include <QStandardPaths>
-#include <QDir>
-#include <QCoreApplication>
 
-// static members must be defined once
-QSqlDatabase DatabaseManager::userdb;
-QSqlDatabase DatabaseManager::mediadb;
+// ---- static members ---------------------------------------------------------
+QSqlDatabase DatabaseManager::s_userDb;
+QSqlDatabase DatabaseManager::s_mediaDb;
 
-QString appDataDir()
+// ---- helpers ---------------------------------------------------------------
+
+static QString resolveAppDataDirectory()
 {
-    // Optional override for debugging or custom installs
+    // Optional override for debugging or portable installs
     QString base = qEnvironmentVariable("RETRO_ROOST_DATA_DIR");
     if (base.isEmpty()) {
         if (QCoreApplication::organizationName().isEmpty())
@@ -20,9 +22,9 @@ QString appDataDir()
         if (QCoreApplication::applicationName().isEmpty())
             QCoreApplication::setApplicationName("RetroRoostQT");
 
-        // Windows:  %LOCALAPPDATA%/RetroRoost/RetroRoostQT
-        // macOS:    ~/Library/Application Support/RetroRoost/RetroRoostQT
-        // Linux:    ~/.local/share/RetroRoost/RetroRoostQT
+        // Win:  %LOCALAPPDATA%/RetroRoost/RetroRoostQT
+        // mac:  ~/Library/Application Support/RetroRoost/RetroRoostQT
+        // linux:~/.local/share/RetroRoost/RetroRoostQT
         base = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
         if (base.isEmpty())
             base = QDir::homePath() + "/RetroRoost";
@@ -31,60 +33,65 @@ QString appDataDir()
     QDir dir(base);
     if (!dir.exists())
         dir.mkpath(".");
+
     return dir.absolutePath();
 }
 
-QString appDataFile(const QString& fileName)
+static QString dataFilePath(const QString& fileName)
 {
-    QDir dir(appDataDir());
-    return dir.filePath(fileName);
+    return QDir(resolveAppDataDirectory()).filePath(fileName);
 }
 
-static bool ensureUsersSchema(QSqlDatabase& db)
+static bool ensureUsersTableAndIndexes(QSqlDatabase& db)
 {
-    QSqlQuery q(db);
-
-    // 1) Original create (id, name, email) — safe if table exists already
-    if (!q.exec(
+    // 1) Ensure base table exists
+    QSqlQuery createUsersTable(db);
+    const char* createSql =
         "CREATE TABLE IF NOT EXISTS users ("
-        "  id INTEGER PRIMARY KEY AUTOINCREMENT, "
-        "  name TEXT NOT NULL, "
+        "  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "  name TEXT NOT NULL,"
         "  email TEXT NOT NULL"
-        ")"))
-    {
-        qWarning() << "[users] create failed:" << q.lastError().text();
+        ")";
+    if (!createUsersTable.exec(createSql)) {
+        qWarning() << "[users] create failed:" << createUsersTable.lastError().text();
         return false;
     }
 
-    // 2) MIGRATION: add password column if missing
-    QSqlQuery iq(db);
-    if (!iq.exec("PRAGMA table_info(users)")) {
-        qWarning() << "[users] PRAGMA table_info failed:" << iq.lastError().text();
+    // 2) Check for 'password' column and add if missing
+    QSqlQuery tableInfoQuery(db);
+    if (!tableInfoQuery.exec("PRAGMA table_info(users)")) {
+        qWarning() << "[users] PRAGMA table_info failed:" << tableInfoQuery.lastError().text();
         return false;
     }
 
-    bool hasPassword = false;
-    while (iq.next()) {
-        // PRAGMA table_info columns: cid, name, type, notnull, dflt_value, pk
-        if (iq.value(1).toString() == QLatin1String("password")) { hasPassword = true; break; }
+    bool hasPasswordColumn = false;
+    while (tableInfoQuery.next()) {
+        // PRAGMA table_info: (cid, name, type, notnull, dflt_value, pk)
+        if (tableInfoQuery.value(1).toString() == QLatin1String("password")) {
+            hasPasswordColumn = true;
+            break;
+        }
     }
 
-    if (!hasPassword) {
-        QSqlQuery alter(db);
-        if (!alter.exec("ALTER TABLE users ADD COLUMN password TEXT NOT NULL DEFAULT ''")) {
-            qWarning() << "[users] add password column failed:" << alter.lastError().text();
+    if (!hasPasswordColumn) {
+        QSqlQuery addPasswordColumn(db);
+        if (!addPasswordColumn.exec("ALTER TABLE users ADD COLUMN password TEXT NOT NULL DEFAULT ''")) {
+            qWarning() << "[users] add password column failed:" << addPasswordColumn.lastError().text();
             return false;
         }
         qDebug() << "[users] Added password column";
     }
 
-    // 3) UNIQUE indexes (safe if they already exist)
-    if (!q.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_name  ON users(name)")) {
-        qWarning() << "[users] unique idx on name failed:" << q.lastError().text();
+    // 3) Create unique indexes (idempotent)
+    QSqlQuery createIndexes(db);
+
+    if (!createIndexes.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_name  ON users(name)")) {
+        qWarning() << "[users] unique index on name failed:" << createIndexes.lastError().text();
         return false;
     }
-    if (!q.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email)")) {
-        qWarning() << "[users] unique idx on email failed:" << q.lastError().text();
+
+    if (!createIndexes.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email)")) {
+        qWarning() << "[users] unique index on email failed:" << createIndexes.lastError().text();
         return false;
     }
 
@@ -92,51 +99,60 @@ static bool ensureUsersSchema(QSqlDatabase& db)
     return true;
 }
 
-bool DatabaseManager::initUser() {
-    userdb = QSqlDatabase::addDatabase("QSQLITE", "user");
-    const QString userPath = appDataFile("userdb.sqlite");
-    userdb.setDatabaseName(userPath);
+// ---- public API ------------------------------------------------------------
 
-    if (!userdb.open()) {
-        qWarning() << "Failed to open user DB:" << userdb.lastError().text()
-                   << "at" << userPath;
+bool DatabaseManager::initUserDatabase()
+{
+    s_userDb = QSqlDatabase::addDatabase("QSQLITE", "user");
+    const QString filePath = dataFilePath("userdb.sqlite");
+    s_userDb.setDatabaseName(filePath);
+
+    if (!s_userDb.open()) {
+        qWarning() << "Failed to open user DB:" << s_userDb.lastError().text()
+                   << "at" << filePath;
         return false;
     }
-    qDebug() << "userdb opened at:" << userdb.databaseName();
+    qDebug() << "userdb opened at:" << s_userDb.databaseName();
 
-    if (!ensureUsersSchema(userdb))
+    if (!ensureUsersTableAndIndexes(s_userDb))
         return false;
 
     return true;
 }
 
-bool DatabaseManager::initMedia() {
-    mediadb = QSqlDatabase::addDatabase("QSQLITE", "media");
-    const QString mediaPath = appDataFile("mediadb.sqlite");
-    mediadb.setDatabaseName(mediaPath);
+bool DatabaseManager::initMediaDatabase()
+{
+    s_mediaDb = QSqlDatabase::addDatabase("QSQLITE", "media");
+    const QString filePath = dataFilePath("mediadb.sqlite");
+    s_mediaDb.setDatabaseName(filePath);
 
-    if (!mediadb.open()) {
-        qWarning() << "Failed to open media DB:" << mediadb.lastError().text()
-                   << "at" << mediaPath;
+    if (!s_mediaDb.open()) {
+        qWarning() << "Failed to open media DB:" << s_mediaDb.lastError().text()
+                   << "at" << filePath;
         return false;
     }
-    qDebug() << "mediadb opened at:" << mediadb.databaseName();
+    qDebug() << "mediadb opened at:" << s_mediaDb.databaseName();
 
-    QSqlQuery q(mediadb);
-    if (!q.exec(
+    QSqlQuery createMediaTable(s_mediaDb);
+    const char* createSql =
         "CREATE TABLE IF NOT EXISTS media ("
-        "  id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "  id INTEGER PRIMARY KEY AUTOINCREMENT,"
         "  title TEXT NOT NULL"
-        ")"))
-    {
-        qWarning() << "Failed to create media table:" << q.lastError().text();
+        ")";
+    if (!createMediaTable.exec(createSql)) {
+        qWarning() << "Failed to create media table:" << createMediaTable.lastError().text();
         return false;
     }
+
     qDebug() << "media table ready";
     return true;
 }
 
-QSqlDatabase DatabaseManager::connection(const QString &which) {
-    if (which == "media") return mediadb;
-    return userdb;
+QSqlDatabase DatabaseManager::connection(const QString& which)
+{
+    // Keep the string-based API for compatibility.
+    // Accepts: "media" -> media DB; anything else -> user DB.
+    if (which.compare(QStringLiteral("media"), Qt::CaseInsensitive) == 0)
+        return s_mediaDb;
+    return s_userDb;
 }

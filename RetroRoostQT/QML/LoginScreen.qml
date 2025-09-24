@@ -20,4 +20,24 @@ Page {
             onClicked: stack.replace("HomePage.qml")
         }
     }
+
+    Text {
+        text: "Create an account"
+        color: "blue"
+        font.pixelSize: 12
+        anchors.bottom: parent.bottom
+        anchors.left: parent.left
+        anchors.margins: 10
+        font.underline: true
+
+        MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: {
+                stack.replace("CreateAccount.qml")
+            }
+        }
+    }
+
+
 }

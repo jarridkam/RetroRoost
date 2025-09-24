@@ -1,48 +1,94 @@
 #include "UserRepository.h"
 #include "../DatabaseManager.h"
+
+#include <QSqlDatabase>
 #include <QSqlQuery>
 #include <QSqlError>
 #include <QDebug>
 
-bool UserRepository::createUser(const QString &name, const QString &email, const QString &password) {
-    QSqlQuery q(DatabaseManager::connection("user"));
-    q.prepare("INSERT OR IGNORE INTO users (name, email, password) "
-              "VALUES (:name, :email, :password)");
-    q.bindValue(":name", name);
-    q.bindValue(":email", email);
-    q.bindValue(":password", password);
 
-    qDebug() << "Inserting user:" << name << email << password;
+static inline User mapRowToUser(const QSqlQuery &row)
+{
+    return User(
+        row.value(0).toString(), // name
+        row.value(1).toString(), // email
+        row.value(2).toString()  // password
+    );
+}
 
-    if (!q.exec()) {
-        qWarning() << "Insert failed:" << q.lastError().text();
+UserRepository::UserRepository(QObject *parent)
+    : QObject(parent)
+{
+}
+
+bool UserRepository::createUser(const User &user)
+{
+    QSqlDatabase db = DatabaseManager::connection(QStringLiteral("user"));
+    if (!db.isOpen()) {
+        qWarning() << "[users] Database not open!";
         return false;
     }
 
-    const bool inserted = (q.numRowsAffected() == 1);
-    if (!inserted) qDebug() << "Skipped insert: username/email already exists";
-    else qDebug() << "Insert succeeded for" << name;
-    return inserted;
-}
+    QSqlQuery insertUserQuery(db);
+    insertUserQuery.prepare(
+        "INSERT OR IGNORE INTO users (name, email, password) "
+        "VALUES (:name, :email, :password)"
+    );
+    insertUserQuery.bindValue(":name",     user.GetName());
+    insertUserQuery.bindValue(":email",    user.GetEmail());
+    insertUserQuery.bindValue(":password", user.GetPassword());
 
-QList<User> UserRepository::getAllUsers() {
-    QList<User> out;
-    QSqlQuery q(DatabaseManager::connection("user"));
+    qDebug().noquote()
+        << "[users] Insert attempt:"
+        << "name="  << user.GetName()
+        << "email=" << user.GetEmail()
+        << "password=****";
 
-    if (!q.exec("SELECT name, email, password FROM users")) {
-        qWarning() << "getAllUsers failed:" << q.lastError().text();
-        return out;
+    if (!insertUserQuery.exec()) {
+        qWarning().noquote() << "[users] Insert failed:"
+                             << insertUserQuery.lastError().text();
+        return false;
     }
 
-    while (q.next()) {
-        out.append(
-            User
-            (
-            q.value(0).toString(),   // name
-            q.value(1).toString(),   // email
-            q.value(2).toString())); // password
+    const bool rowInserted = (insertUserQuery.numRowsAffected() == 1);
+    if (rowInserted) {
+        qDebug().noquote() << "[users] Insert succeeded for"
+                           << user.GetName();
+    } else {
+        qDebug() << "[users] Insert skipped (duplicate name/email)";
     }
-    return out;
+    return rowInserted;
 }
 
+bool UserRepository::createUser(const QString &name,
+                                const QString &email,
+                                const QString &password)
+{
+    return createUser(User{name, email, password});
+}
 
+QList<User> UserRepository::getAllUsers()
+{
+    QList<User> users;
+
+    QSqlDatabase db = DatabaseManager::connection(QStringLiteral("user"));
+    if (!db.isOpen()) {
+        qWarning() << "[users] Database not open!";
+        return users;
+    }
+
+    QSqlQuery selectAllQuery(db);
+    if (!selectAllQuery.exec("SELECT name, email, password FROM users")) {
+        qWarning().noquote() << "[users] getAllUsers failed:"
+                             << selectAllQuery.lastError().text();
+        return users;
+    }
+
+    users.reserve(32);
+    while (selectAllQuery.next()) {
+        users.append(mapRowToUser(selectAllQuery));
+    }
+
+    qDebug() << "[users] getAllUsers returned rows:" << users.size();
+    return users;
+}

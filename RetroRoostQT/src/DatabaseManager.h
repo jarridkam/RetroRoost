@@ -1,14 +1,18 @@
-// DatabaseManager.h
 #pragma once
+#include <QString>
 #include <QSqlDatabase>
 
 class DatabaseManager {
 public:
-    static bool initUser();
-    static bool initMedia();
-    static QSqlDatabase connection(const QString &which = "user");
+    // Opens (and migrates) the user + media databases
+    static bool initUserDatabase();
+    static bool initMediaDatabase();
+
+    // Returns the requested connection ("user" or "media")
+    static QSqlDatabase connection(const QString& which);
 
 private:
-    static QSqlDatabase userdb;
-    static QSqlDatabase mediadb;
+    // Static connection handles (initialized in .cpp)
+    static QSqlDatabase s_userDb;
+    static QSqlDatabase s_mediaDb;
 };

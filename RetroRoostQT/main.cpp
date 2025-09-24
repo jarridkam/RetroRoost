@@ -1,5 +1,6 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
+#include <QQmlContext>
 #include "src/DatabaseManager.h"
 #include "src/User/UserRepository.h"
 #include <iostream>
@@ -10,26 +11,30 @@ int main(int argc, char *argv[]) {
     QGuiApplication app(argc, argv);
     QQmlApplicationEngine engine;
 
-    // Initialize user database
-    if (!DatabaseManager::initUser()) {
+    UserRepository userRepo;
+
+
+    if (!DatabaseManager::initUserDatabase()) {
         return -1;
     } else {
         std::cout << "userdb opened successfully" << std::endl;
     }
 
-    // Initialize media database
-    if (!DatabaseManager::initMedia()) {
+
+    if (!DatabaseManager::initMediaDatabase()) {
         return -1;
     } else {
         std::cout << "mediadb opened successfully" << std::endl;
     }
 
-    if (!UserRepository::createUser("BlakeSaul", "blakey@example.com", "testPassword")) {
+    engine.rootContext()->setContextProperty("userRepo", &userRepo);
+
+    /*if (!UserRepository::createUser("BlakeSaul", "blakey@example.com", "testPassword")) {
         qWarning() << "Insert failed!";
-    }
+    }*/
 
 
-    QList<User> users = UserRepository::getAllUsers();
+    QList<User> users = userRepo.getAllUsers();
     for (const auto &u : users) {
         qDebug() << "User:" << u.GetName()
                  << "Email" << u.GetEmail()
@@ -37,7 +42,6 @@ int main(int argc, char *argv[]) {
     }
 
 
-    // Load the correct QML file
     if (!isTest) {
         engine.load(QUrl(QStringLiteral("qrc:/QML/main.qml")));
         if (engine.rootObjects().isEmpty())
