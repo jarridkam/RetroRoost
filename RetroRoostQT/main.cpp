@@ -24,7 +24,7 @@ int main(int argc, char *argv[]) {
         std::cout << "mediadb opened successfully" << std::endl;
     }
 
-    if (!UserRepository::createUser("Alice", "alice@example.com")) {
+    if (!UserRepository::createUser("BlakeSaul", "blakey@example.com", "testPassword")) {
         qWarning() << "Insert failed!";
     }
 
@@ -32,6 +32,7 @@ int main(int argc, char *argv[]) {
     QList<User> users = UserRepository::getAllUsers();
     for (const auto &u : users) {
         qDebug() << "User:" << u.GetName()
+                 << "Email" << u.GetEmail()
                  << "Password:" << u.GetPassword();
     }
 

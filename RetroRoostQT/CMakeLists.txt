@@ -30,9 +30,9 @@ find_package(Qt6 REQUIRED COMPONENTS
 add_executable(RetroRoostQT
         main.cpp
         Resources/qml.qrc
-        src/User/User.h
         src/DatabaseManager.cpp
         src/DatabaseManager.h
+        src/User/User.h
         src/User/UserRepository.cpp
         src/User/UserRepository.h
 )

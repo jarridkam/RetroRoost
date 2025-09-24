@@ -11,7 +11,7 @@
 // UserRepository.h
 class UserRepository {
 public:
-    static bool createUser(const QString& name, const QString& email);
+    static bool createUser(const QString& name, const QString& email, const QString& password);
     static QList<User> getAllUsers();
 };
 

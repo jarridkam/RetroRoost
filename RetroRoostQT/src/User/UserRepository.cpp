@@ -4,42 +4,45 @@
 #include <QSqlError>
 #include <QDebug>
 
-bool UserRepository::createUser(const QString &name, const QString &email) {
-    QSqlQuery userQuery(DatabaseManager::connection("user"));
-    userQuery.prepare("INSERT INTO users (name, email) VALUES (:name, :email)");
-    userQuery.bindValue(":name", name);
-    userQuery.bindValue(":email", email);
+bool UserRepository::createUser(const QString &name, const QString &email, const QString &password) {
+    QSqlQuery q(DatabaseManager::connection("user"));
+    q.prepare("INSERT OR IGNORE INTO users (name, email, password) "
+              "VALUES (:name, :email, :password)");
+    q.bindValue(":name", name);
+    q.bindValue(":email", email);
+    q.bindValue(":password", password);
 
-    qDebug() << "Inserting user:" << name << email;
+    qDebug() << "Inserting user:" << name << email << password;
 
-    if (!userQuery.exec()) {
-        qWarning() << "Insert failed:" << userQuery.lastError().text();
+    if (!q.exec()) {
+        qWarning() << "Insert failed:" << q.lastError().text();
         return false;
     }
 
-    qDebug() << "Insert succeeded for" << name;
-    return true;
+    const bool inserted = (q.numRowsAffected() == 1);
+    if (!inserted) qDebug() << "Skipped insert: username/email already exists";
+    else qDebug() << "Insert succeeded for" << name;
+    return inserted;
 }
 
 QList<User> UserRepository::getAllUsers() {
-    QList<User> userList;
-    QSqlQuery query(DatabaseManager::connection("user"));
+    QList<User> out;
+    QSqlQuery q(DatabaseManager::connection("user"));
 
-    if (!query.exec("SELECT id, name, email FROM users")) {
-        qWarning() << "getAllUsers failed:" << query.lastError().text();
-        return userList;
+    if (!q.exec("SELECT name, email, password FROM users")) {
+        qWarning() << "getAllUsers failed:" << q.lastError().text();
+        return out;
     }
 
-    int rowCount = 0;
-    while (query.next()) {
-        User u(
-            query.value(1).toString(),
-            query.value(2).toString());
-
-        userList.append(u);
-        rowCount++;
+    while (q.next()) {
+        out.append(
+            User
+            (
+            q.value(0).toString(),   // name
+            q.value(1).toString(),   // email
+            q.value(2).toString())); // password
     }
-
-    //qDebug() << "getAllUsers returned rows:" << rowCount;
-    return userList;
+    return out;
 }
+
+
