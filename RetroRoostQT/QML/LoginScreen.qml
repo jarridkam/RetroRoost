@@ -5,20 +5,32 @@ Page {
     title: "Login"
 
     Column {
+        spacing: 12
         anchors.centerIn: parent
-        spacing: 10
 
         TextField {
-            placeholderText: "Username"
+            id: emailField
+            placeholderText: "Email"
         }
+
         TextField {
+            id: passwordField
             placeholderText: "Password"
             echoMode: TextInput.Password
         }
+
         Button {
             text: "Login"
-            onClicked: stack.replace("HomePage.qml")
+            onClicked: {
+                if (authorizationManager.login(emailField.text, passwordField.text)) {
+                    stack.replace("HomePage.qml")
+
+                } else {
+                    console.log("Invalid email or password")
+                }
+            }
         }
+
     }
 
     Text {

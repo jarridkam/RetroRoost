@@ -35,6 +35,8 @@ add_executable(RetroRoostQT
         src/User/User.h
         src/User/UserRepository.cpp
         src/User/UserRepository.h
+        src/AuthorizationManager.cpp
+        src/AuthorizationManager.h
 )
 
 target_link_libraries(RetroRoostQT PRIVATE

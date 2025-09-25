@@ -1,6 +1,7 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
+#include "src/AuthorizationManager.h"
 #include "src/DatabaseManager.h"
 #include "src/User/UserRepository.h"
 #include <iostream>
@@ -12,7 +13,7 @@ int main(int argc, char *argv[]) {
     QQmlApplicationEngine engine;
 
     UserRepository userRepo;
-
+    AuthorizationManager authorizationManager;
 
     if (!DatabaseManager::initUserDatabase()) {
         return -1;
@@ -28,6 +29,8 @@ int main(int argc, char *argv[]) {
     }
 
     engine.rootContext()->setContextProperty("userRepo", &userRepo);
+    engine.rootContext()->setContextProperty("authorizationManager", &authorizationManager);
+
 
     /*if (!UserRepository::createUser("BlakeSaul", "blakey@example.com", "testPassword")) {
         qWarning() << "Insert failed!";

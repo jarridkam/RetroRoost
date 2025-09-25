@@ -92,3 +92,31 @@ QList<User> UserRepository::getAllUsers()
     qDebug() << "[users] getAllUsers returned rows:" << users.size();
     return users;
 }
+
+std::optional<User> UserRepository::findUserByEmailAndPassword(
+    const QString& email,
+    const QString& password
+) {
+    QSqlDatabase db = DatabaseManager::connection("user");
+    QSqlQuery query(db);
+
+    query.prepare("SELECT name, email, password FROM users "
+                  "WHERE email = :email AND password = :password");
+    query.bindValue(":email", email);
+    query.bindValue(":password", password);
+
+    if (!query.exec()) {
+        qWarning() << "Login query failed:" << query.lastError().text();
+        return std::nullopt;
+    }
+
+    if (query.next()) {
+        return User(
+            query.value(0).toString(),
+            query.value(1).toString(),
+            query.value(2).toString()
+        );
+    }
+
+    return std::nullopt; // no match
+}
