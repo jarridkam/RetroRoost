@@ -1,9 +1,9 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
-#include "src/AuthorizationManager.h"
-#include "src/DatabaseManager.h"
-#include "src/User/UserRepository.h"
+#include "src/core/AuthorizationManager.h"
+#include "src/core/DatabaseManager.h"
+#include "src/repositories/UserRepository.h"
 #include <iostream>
 
 bool isTest = false;

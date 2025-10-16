@@ -2,9 +2,10 @@
     <qresource prefix="/">
         <file>../QML/main.qml</file>
         <file>../QML/test.qml</file>
-        <file>../QML/SplashScreen.qml</file>
-        <file>../QML/LoginScreen.qml</file>
-        <file>../QML/HomePage.qml</file>
-        <file>../QML/CreateAccount.qml</file>
+        <file>../QML/Pages/SplashScreen.qml</file>
+        <file>../QML/Pages/LoginScreen.qml</file>
+        <file>../QML/Pages/HomePage.qml</file>
+        <file>../QML/Pages/CreateAccount.qml</file>
+        <file>../QML/Components/NavigationBar.qml</file>
     </qresource>
 </RCC>

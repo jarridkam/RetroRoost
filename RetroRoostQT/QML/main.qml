@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import "Pages"
 
 ApplicationWindow {
     visible: true
